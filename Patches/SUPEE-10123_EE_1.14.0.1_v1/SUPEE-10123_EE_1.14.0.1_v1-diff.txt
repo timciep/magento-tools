@@ -1,0 +1,73 @@
+diff --git a/webroot/app/code/core/Enterprise/PageCache/Model/Observer.php b/webroot/app/code/core/Enterprise/PageCache/Model/Observer.php
+old mode 100644
+new mode 100755
+index bdccff3..0c6fafb
+--- a/webroot/app/code/core/Enterprise/PageCache/Model/Observer.php
++++ b/webroot/app/code/core/Enterprise/PageCache/Model/Observer.php
+@@ -1160,4 +1160,33 @@ class Enterprise_PageCache_Model_Observer
+     {
+         Enterprise_PageCache_Helper_Form_Key::getFormKey(true);
+     }
++
++    /**
++     * Replace form key in URL after login
++     *
++     * @param Varien_Event_Observer $observer
++     * @return $this
++     */
++    public function replaceFormKeyForWishlistAdd(Varien_Event_Observer $observer)
++    {
++        if ($this->isCacheEnabled()) {
++            $formKey = Enterprise_PageCache_Helper_Form_Key::getFormKey();
++            if (!$formKey) {
++                $formKey = Enterprise_PageCache_Helper_Form_Key::getFormKey(true);
++            }
++        } else {
++            $formKey = Mage::getSingleton('core/session')->getFormKey();
++        }
++        $session = Mage::getSingleton('customer/session');
++        $beforeWishlistRequest = $session->getBeforeWishlistRequest();
++
++        $beforeWishlistRequest['form_key'] = $formKey;
++        $session->setBeforeWishlistRequest($beforeWishlistRequest);
++
++        $newBeforeAuthUrl = Mage::getUrl('wishlist/index/add',
++            array('product' => $beforeWishlistRequest['product'], 'form_key' => $formKey)
++        );
++        $session->setBeforeAuthUrl($newBeforeAuthUrl);
++        return $this;
++    }
+ }
+diff --git a/webroot/app/code/core/Enterprise/Wishlist/etc/config.xml b/webroot/app/code/core/Enterprise/Wishlist/etc/config.xml
+index ce02f71..7e3bc87 100644
+--- a/webroot/app/code/core/Enterprise/Wishlist/etc/config.xml
++++ b/webroot/app/code/core/Enterprise/Wishlist/etc/config.xml
+@@ -143,6 +143,14 @@
+                     </enterprise_pagecache>
+                 </observers>
+             </wishlist_save_commit_after>
++            <customer_login>
++                <observers>
++                    <enterprise_wishlist>
++                        <class>enterprise_pagecache/observer</class>
++                        <method>replaceFormKeyForWishlistAdd</method>
++                    </enterprise_wishlist>
++                </observers>
++            </customer_login>
+         </events>
+     </frontend>
+     <default>
+diff --git a/webroot/app/etc/applied.patches.list b/webroot/app/etc/applied.patches.list
+index 44ce5d1..eb1865b 100644
+--- a/webroot/app/etc/applied.patches.list
++++ b/webroot/app/etc/applied.patches.list
+@@ -743,3 +743,9 @@ patching file skin/frontend/base/default/js/opcheckout.js
+ patching file skin/frontend/enterprise/default/js/opcheckout.js
+ 
+ 
++2017-07-25 20:56:18 UTC | SUPEE-10123 | EE_1.14.0.1 | v1 | 8aa8a84d9aa047fcaaedb77f1d421676e6daa3b1 | Tue Jul 11 11:36:32 2017 +0300 | 0ff39eb..HEAD
++patching file app/code/core/Enterprise/PageCache/Model/Observer.php
++Hunk #1 succeeded at 1160 with fuzz 2 (offset -5 lines).
++patching file app/code/core/Enterprise/Wishlist/etc/config.xml
++
++
